@@ -1,13 +1,47 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
 
+// ===== НАСТРОЙКА ЗАГРУЗКИ ФОТО =====
+
+// Создаём папку uploads если её нет
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        // Уникальное имя: timestamp + случайное число + расширение
+        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // макс 5MB
+    fileFilter: (req, file, cb) => {
+        // Только картинки
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Только изображения!'), false);
+        }
+    }
+});
+
 // ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
-// Для Railway: используем DATABASE_URL
-// Для локальной разработки: используем локальные настройки
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'postgresql://postgres:alex69@localhost:5432/sporthub',
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -20,12 +54,12 @@ pool.connect((err, client, release) => {
     } else {
         console.log('✅ PostgreSQL подключен успешно!');
         release();
-        // Инициализируем таблицы при старте
         initDatabase();
     }
 });
 
 // ===== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ =====
+
 async function initDatabase() {
     try {
         // Таблица площадок
@@ -562,6 +596,19 @@ app.delete('/api/admin/venues/:id', async (req, res) => {
         console.error('Ошибка:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
+});
+
+// ===== ЗАГРУЗКА ФОТО =====
+
+// Загрузка фото
+app.post('/api/admin/upload', upload.single('photo'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Файл не загружен' });
+    }
+    
+    // Возвращаем URL для доступа к файлу
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, url: fileUrl });
 });
 
 // ===== СТАТИКА =====
