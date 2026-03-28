@@ -11,37 +11,67 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --primary: #0891b2;
-            --primary-light: #06b6d4;
-            --primary-soft: rgba(6, 182, 212, 0.1);
-            --secondary: #f97316;
-            --accent: #10b981;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8fafc;
-            --bg-tertiary: #f1f5f9;
-            --bg-elevated: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --border-color: #e2e8f0;
-            --border-light: #f1f5f9;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 20px;
-        }
+    /* Светлая тема (по умолчанию) */
+    --primary: #0891b2;
+    --primary-light: #06b6d4;
+    --primary-soft: rgba(6, 182, 212, 0.1);
+    --secondary: #f97316;
+    --accent: #10b981;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --bg-elevated: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --border-color: #e2e8f0;
+    --border-light: #f1f5f9;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    --gradient-secondary: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+}
+
+/* Тёмная тема */
+[data-theme="dark"] {
+    --primary: #06b6d4;
+    --primary-light: #22d3ee;
+    --primary-soft: rgba(6, 182, 212, 0.15);
+    --secondary: #fb923c;
+    --accent: #34d399;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --bg-elevated: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-color: #334155;
+    --border-light: #1e293b;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    --gradient-primary: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+    --gradient-secondary: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+}
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        html {
+            transition: background-color 0.3s ease;
         }
 
         body {
@@ -453,6 +483,11 @@
             display: flex;
             justify-content: space-around;
             z-index: 100;
+            transition: background-color 0.3s ease;
+        }
+
+        [data-theme="dark"] .bottom-nav {
+            background: rgba(15, 23, 42, 0.95);
         }
 
         .nav-item {
@@ -1038,6 +1073,9 @@
                     Sporthub
                 </div>
                 <div class="header-actions">
+                    <button class="icon-btn" onclick="toggleTheme()" id="theme-btn" title="Сменить тему">
+                        <i data-lucide="moon" style="width: 20px; height: 20px;"></i>
+                    </button>
                     <button class="icon-btn" onclick="showNotifications()">
                         <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
                         <span class="badge" id="notification-badge" style="display: none;">0</span>
@@ -1327,11 +1365,51 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            initTheme();
             initMap();
             loadVenues();
             generateCalendar();
             showAuthSection();
         });
+
+        // ===== ТЕМА =====
+
+        function initTheme() {
+            // Проверяем сохранённую тему
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function setTheme(theme) {
+            const html = document.documentElement;
+            const btn = document.getElementById('theme-btn');
+            
+            if (theme === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+                if (btn) {
+                    btn.innerHTML = '<i data-lucide="sun" style="width: 20px; height: 20px;"></i>';
+                    btn.title = 'Переключить на светлую тему';
+                }
+            } else {
+                html.removeAttribute('data-theme');
+                if (btn) {
+                    btn.innerHTML = '<i data-lucide="moon" style="width: 20px; height: 20px;"></i>';
+                    btn.title = 'Переключить на тёмную тему';
+                }
+            }
+            
+            // Обновляем иконку
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
 
         let map;
         let markers = [];
@@ -1868,7 +1946,7 @@
                     return;
                 }
                 
-                list.innerHTML = friends.map(friend => `
+                                list.innerHTML = friends.map(friend => `
                     <div class="friend-card" onclick="openDialog('${friend.id}', '${friend.name}')">
                         <div class="friend-avatar">${friend.name[0].toUpperCase()}</div>
                         <div class="friend-info">
