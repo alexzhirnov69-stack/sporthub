@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ffffff">
+    <title>Sporthub — Бронирование спортивных площадок</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #0891b2;
+            --primary-light: #06b6d4;
+            --primary-soft: rgba(6, 182, 212, 0.1);
+            --secondary: #f97316;
+            --accent: #10b981;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-elevated: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --border-light: #f1f5f9;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            max-width: 480px;
+            width: 100%;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--bg-primary);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            z-index: 100;
+            position: sticky;
+            top: 0;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        .badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--gradient-secondary);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--bg-primary);
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            scroll-behavior: smooth;
+        }
+
+        .main-content::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .search-section {
+            padding: 20px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .search-bar {
+            background: var(--bg-tertiary);
+            border: 2px solid transparent;
+            border-radius: var(--radius-lg);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .search-bar:focus-within {
+            background: var(--bg-primary);
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            font-weight: 500;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .sport-filters {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+
+        .sport-filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sport-chip {
+            flex-shrink: 0;
+            padding: 10px 18px;
+            background: var(--bg-tertiary);
+            border: 2px solid transparent;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .sport-chip:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .sport-chip.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sport-chip:active {
+            transform: scale(0.95);
+        }
+
+        .map-section {
+            padding: 20px;
+            background: var(--bg-secondary);
+        }
+
+        .map-container {
+            width: 100%;
+            height: 280px;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            position: relative;
+            box-shadow: var(--shadow-lg);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-tertiary);
+        }
+
+        .venues-section {
+            padding: 0 20px 100px;
+            background: var(--bg-secondary);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-top: 8px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .venues-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .venue-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .venue-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-color);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .venue-image {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .venue-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .venue-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .venue-favorite {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .venue-favorite:hover {
+            transform: scale(1.1);
+            color: #ef4444;
+        }
+
+        .venue-favorite.active {
+            color: #ef4444;
+            background: white;
+        }
+
+        .venue-info {
+            padding: 20px;
+        }
+
+        .venue-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .venue-location {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .venue-features {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .feature-tag {
+            padding: 6px 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .venue-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .venue-price {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .venue-price span {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .book-btn {
+            padding: 12px 24px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        .book-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .book-btn:active {
+            transform: scale(0.98);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-light);
+            padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: space-around;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            color: var(--text-secondary);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            border-radius: 24px 24px 0 0;
+            overflow: hidden;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-primary);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--bg-secondary);
+        }
+
+        .calendar-section {
+            margin-bottom: 24px;
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .calendar-day:hover {
+            border-color: var(--primary-light);
+            background: var(--bg-secondary);
+        }
+
+        .calendar-day.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--shadow-md);
+        }
+
+        .day-name {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+
+        .day-number {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .time-slot {
+            padding: 14px;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .time-slot:hover {
+            border-color: var(--primary-light);
+            background: var(--bg-secondary);
+        }
+
+        .time-slot.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--shadow-md);
+        }
+
+        .time-slot.booked {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            text-decoration: line-through;
+            border-color: transparent;
+        }
+
+        .price-summary {
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            margin-top: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .price-row.total {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-primary);
+            padding-top: 16px;
+            border-top: 2px solid var(--border-light);
+            margin-top: 16px;
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 8px 30px rgba(6, 182, 212, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pay-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(6, 182, 212, 0.4);
+        }
+
+        .pay-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            box-shadow: none;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--radius-lg);
+            font-weight: 600;
+            box-shadow: var(--shadow-xl);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            background: #ef4444;
+        }
+
+        .toast.success {
+            background: var(--accent);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .profile-header {
+            padding: 40px 20px;
+            text-align: center;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 700;
+            color: white;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .loading {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            margin-bottom: 16px;
+            opacity: 0.5;
+            color: var(--text-muted);
+        }
+
+        /* Стили для чата */
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: var(--radius-lg);
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            outline: none;
+            font-size: 16px;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary-light);
+        }
+
+        .send-btn {
+            padding: 14px 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .friend-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-light);
+        }
+
+        .friend-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .friend-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .friend-info {
+            flex: 1;
+        }
+
+        .friend-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .friend-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .request-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            margin-bottom: 12px;
+            border: 1px solid var(--border-light);
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-accept {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-reject {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .search-user-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            margin-bottom: 12px;
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-add-friend {
+            padding: 8px 16px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-add-friend:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px 20px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        @media (max-width: 380px) {
+            .sport-chip {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            
+            .venue-price {
+                font-size: 18px;
+            }
+            
+            .book-btn {
+                padding: 10px 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i data-lucide="zap"></i>
+                    Sporthub
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="showNotifications()">
+                        <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
+                        <span class="badge" id="notification-badge" style="display: none;">0</span>
+                    </button>
+                    <button class="icon-btn" onclick="showCart()">
+                        <i data-lucide="shopping-cart" style="width: 20px; height: 20px;"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Главная страница -->
+            <div id="home-page" class="page active">
+                <div class="search-section">
+                    <div class="search-bar">
+                        <i data-lucide="search" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                        <input type="text" placeholder="Найти площадку..." id="search-input">
+                    </div>
+
+                    <div class="sport-filters">
+                        <div class="sport-chip active" data-sport="all">
+                            <i data-lucide="layout-grid" style="width: 16px; height: 16px;"></i>
+                            Все
+                        </div>
+                        <div class="sport-chip" data-sport="football">
+                            <i data-lucide="circle" style="width: 16px; height: 16px;"></i>
+                            Футбол
+                        </div>
+                        <div class="sport-chip" data-sport="basketball">
+                            <i data-lucide="circle-dot" style="width: 16px; height: 16px;"></i>
+                            Баскетбол
+                        </div>
+                        <div class="sport-chip" data-sport="tennis">
+                            <i data-lucide="triangle" style="width: 16px; height: 16px;"></i>
+                            Теннис
+                        </div>
+                        <div class="sport-chip" data-sport="volleyball">
+                            <i data-lucide="hexagon" style="width: 16px; height: 16px;"></i>
+                            Волейбол
+                        </div>
+                        <div class="sport-chip" data-sport="swimming">
+                            <i data-lucide="waves" style="width: 16px; height: 16px;"></i>
+                            Бассейн
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-section">
+                    <div class="map-container">
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <div class="venues-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Ближайшие площадки</h2>
+                    </div>
+                    <div class="venues-list" id="venues-list">
+                        <div class="loading" style="text-align:center;padding:40px;color:var(--text-muted)">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница избранного -->
+            <div id="favorites-page" class="page">
+                <div class="search-section">
+                    <h2 class="section-title" style="margin-bottom: 16px;">Избранное</h2>
+                </div>
+                <div class="venues-section">
+                    <div class="venues-list" id="favorites-list">
+                        <div class="empty-state">
+                            <i data-lucide="heart" style="width: 48px; height: 48px;"></i>
+                            <p>У вас пока нет избранных площадок</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница чата и друзей -->
+            <div id="chat-page" class="page">
+                <div class="search-section">
+                    <h2 class="section-title" style="margin-bottom: 16px;">Друзья и чат</h2>
+                </div>
+                
+                <!-- Табы -->
+                <div class="tab-container">
+                    <button class="tab active" onclick="showChatTab('friends')" id="tab-friends">Мои друзья</button>
+                    <button class="tab" onclick="showChatTab('search')" id="tab-search">Найти игрока</button>
+                    <button class="tab" onclick="showChatTab('requests')" id="tab-requests">
+                        Заявки
+                        <span id="requests-count" style="display: none; background: var(--secondary); color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 4px;">0</span>
+                    </button>
+                </div>
+
+                <!-- Список друзей -->
+                <div id="friends-list-container" class="venues-section">
+                    <div id="friends-list">
+                        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+                            Войдите чтобы видеть друзей
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Поиск игроков -->
+                <div id="search-users-container" class="venues-section" style="display: none;">
+                    <div class="search-bar" style="margin-bottom: 20px;">
+                        <i data-lucide="search" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                        <input type="text" id="search-user-input" placeholder="Поиск по имени или телефону..." onkeyup="searchUsers()">
+                    </div>
+                    <div id="search-results">
+                        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+                            Введите имя или телефон для поиска
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Заявки в друзья -->
+                <div id="friend-requests-container" class="venues-section" style="display: none;">
+                    <div id="friend-requests-list">
+                        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+                            Войдите чтобы видеть заявки
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница диалога -->
+            <div id="dialog-page" class="page">
+                <div class="search-section" style="display: flex; align-items: center; gap: 12px;">
+                    <button onclick="showPage('chat')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+                        <i data-lucide="arrow-left" style="width: 24px; height: 24px;"></i>
+                    </button>
+                    <div>
+                        <h2 class="section-title" id="dialog-name" style="margin-bottom: 0;">Имя</h2>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">в сети</p>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Сообщения здесь -->
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter')sendMessage()">
+                    <button class="send-btn" onclick="sendMessage()">
+                        <i data-lucide="send" style="width: 20px; height: 20px;"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Страница профиля -->
+            <div id="profile-page" class="page">
+                <!-- Неавторизованный пользователь -->
+                <div id="auth-section" style="padding: 40px 20px; text-align: center;">
+                    <div class="avatar" style="margin-bottom: 20px;">👤</div>
+                    <h2 style="margin-bottom: 8px;">Вход в аккаунт</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 30px;">Войдите чтобы общаться с игроками</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 300px; margin: 0 auto;">
+                        <button onclick="showLoginForm()" class="book-btn" style="width: 100%;">Войти</button>
+                        <button onclick="showRegisterForm()" style="width: 100%; padding: 14px; background: var(--bg-tertiary); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: var(--radius-lg); font-weight: 600; cursor: pointer;">Регистрация</button>
+                    </div>
+                </div>
+
+                <!-- Форма входа -->
+                <div id="login-form" style="display: none; padding: 40px 20px; max-width: 300px; margin: 0 auto;">
+                    <h2 style="margin-bottom: 20px; text-align: center;">Вход</h2>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="tel" id="login-phone" placeholder="Телефон" style="padding: 14px; border: 2px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+                        <input type="password" id="login-password" placeholder="Пароль" style="padding: 14px; border: 2px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+                        <button onclick="login()" class="book-btn" style="width: 100%; margin-top: 10px;">Войти</button>
+                        <button onclick="showAuthSection()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; margin-top: 10px;">← Назад</button>
+                    </div>
+                </div>
+
+                <!-- Форма регистрации -->
+                <div id="register-form" style="display: none; padding: 40px 20px; max-width: 300px; margin: 0 auto;">
+                    <h2 style="margin-bottom: 20px; text-align: center;">Регистрация</h2>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="text" id="reg-name" placeholder="Ваше имя" style="padding: 14px; border: 2px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+                        <input type="tel" id="reg-phone" placeholder="Телефон" style="padding: 14px; border: 2px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+                        <input type="password" id="reg-password" placeholder="Пароль" style="padding: 14px; border: 2px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+                        <button onclick="register()" class="book-btn" style="width: 100%; margin-top: 10px;">Зарегистрироваться</button>
+                        <button onclick="showAuthSection()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; margin-top: 10px;">← Назад</button>
+                    </div>
+                </div>
+
+                <!-- Авторизованный пользователь -->
+                <div id="user-section" style="display: none;">
+                    <div class="profile-header">
+                        <div class="avatar" id="user-avatar">👤</div>
+                        <div style="font-size: 24px; font-weight: 700; margin-bottom: 4px; color: var(--text-primary);" id="user-name">Имя</div>
+                        <div style="color: var(--text-secondary); font-size: 15px;" id="user-phone">Телефон</div>
+                        <button onclick="logout()" style="margin-top: 16px; padding: 10px 20px; background: var(--bg-tertiary); color: var(--text-secondary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600;">Выйти</button>
+                    </div>
+
+                    <div class="venues-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Мои бронирования</h2>
+                        </div>
+                        <div class="bookings-list" id="bookings-list">
+                            <div class="empty-state">
+                                <i data-lucide="calendar-x" style="width: 48px; height: 48px;"></i>
+                                <p>У вас пока нет бронирований</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="showPage('home')">
+                <i data-lucide="home" style="width: 24px; height: 24px;"></i>
+                <span>Главная</span>
+            </div>
+            <div class="nav-item" onclick="showPage('favorites')">
+                <i data-lucide="heart" style="width: 24px; height: 24px;"></i>
+                <span>Избранное</span>
+            </div>
+            <div class="nav-item" onclick="showPage('chat')">
+                <i data-lucide="message-circle" style="width: 24px; height: 24px;"></i>
+                <span>Чат</span>
+            </div>
+            <div class="nav-item" onclick="showPage('profile')">
+                <i data-lucide="user" style="width: 24px; height: 24px;"></i>
+                <span>Профиль</span>
+            </div>
+        </nav>
+
+        <div class="modal-overlay" id="booking-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modal-venue-name">Бронирование</h3>
+                    <button class="modal-close" onclick="closeModal()">
+                        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="calendar-section">
+                        <div class="section-label">Выберите дату</div>
+                        <div class="calendar-grid" id="calendar"></div>
+                    </div>
+
+                    <div class="calendar-section">
+                        <div class="section-label">Доступное время</div>
+                        <div class="time-slots" id="time-slots">
+                            <div style="text-align:center;color:var(--text-muted);padding:20px;">Сначала выберите дату</div>
+                        </div>
+                    </div>
+
+                    <div class="price-summary">
+                        <div class="price-row">
+                            <span>Аренда площадки</span>
+                            <span id="price-hour">₽0/час</span>
+                        </div>
+                        <div class="price-row">
+                            <span>Сервисный сбор</span>
+                            <span>₽150</span>
+                        </div>
+                        <div class="price-row total">
+                            <span>Итого к оплате</span>
+                            <span id="total-price">₽0</span>
+                        </div>
+                    </div>
+
+                    <button class="pay-btn" id="pay-btn" onclick="processPayment()" disabled>
+                        Выберите дату и время
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast">
+            <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+            <span id="toast-message">Успешно!</span>
+        </div>
+    </div>
+
+    <script>
+        let venues = [];
+        let favorites = new Set();
+        let currentVenue = null;
+        let selectedDate = null;
+        let selectedTime = null;
+        let currentUser = null;
+        let currentDialogUser = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initMap();
+            loadVenues();
+            generateCalendar();
+            showAuthSection();
+        });
+
+        let map;
+        let markers = [];
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([55.7558, 37.6173], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        function updateMapMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            venues.forEach(venue => {
+                if (!venue.coords) return;
+                
+                const marker = L.marker(venue.coords).addTo(map);
+                marker.bindPopup(`
+                    <div style="font-family: Inter, sans-serif; min-width: 150px;">
+                        <strong style="font-size: 14px; color: #0f172a;">${venue.name}</strong><br>
+                        <span style="font-size: 12px; color: #64748b;">₽${venue.price.toLocaleString()}/час</span><br>
+                        <button onclick="openBooking(${venue.id})" style="margin-top:8px;padding:6px 12px;background:#0891b2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Забронировать</button>
+                    </div>
+                `);
+                markers.push(marker);
+            });
+        }
+
+        async function loadVenues() {
+            try {
+                const response = await fetch('/api/venues');
+                if (!response.ok) throw new Error('Ошибка сервера');
+                venues = await response.json();
+                renderVenues();
+                updateMapMarkers();
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                document.getElementById('venues-list').innerHTML = 
+                    '<div style="text-align:center;padding:40px;color:var(--text-muted)">Ошибка загрузки данных. Проверьте, запущен ли сервер.</div>';
+                showToast('Ошибка подключения к серверу', 'error');
+            }
+        }
+
+        function renderVenues(filter = 'all') {
+            const list = document.getElementById('venues-list');
+            const filtered = filter === 'all' ? venues : venues.filter(v => v.sport === filter);
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Нет площадок</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(venue => `
+                <div class="venue-card animate-slide-up" onclick="openBooking(${venue.id})">
+                    <div class="venue-image">
+                        ${venue.image ? `<img src="${venue.image}" alt="${venue.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${getSportIcon(venue.sport)}';">` : getSportIcon(venue.sport)}
+                        <div class="venue-badge">
+                            <span style="color:#f59e0b;">★</span> 4.${Math.floor(Math.random() * 5 + 5)}
+                        </div>
+                        <button class="venue-favorite ${favorites.has(venue.id) ? 'active' : ''}" onclick="toggleFavorite(event, ${venue.id})">
+                            <i data-lucide="heart" style="width: 18px; height: 18px; fill: ${favorites.has(venue.id) ? 'currentColor' : 'none'};"></i>
+                        </button>
+                    </div>
+                    <div class="venue-info">
+                        <h3 class="venue-name">${venue.name}</h3>
+                        <div class="venue-location">
+                            <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
+                            ${venue.location}
+                        </div>
+                        <div class="venue-features">
+                            <span class="feature-tag">${getSportName(venue.sport)}</span>
+                        </div>
+                        <div class="venue-footer">
+                            <div class="venue-price">
+                                ₽${venue.price.toLocaleString()}<span>/час</span>
+                            </div>
+                            <button class="book-btn">Забронировать</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function getSportIcon(sport) {
+            const icons = {
+                football: '⚽',
+                basketball: '🏀',
+                tennis: '🎾',
+                volleyball: '🏐',
+                swimming: '🏊'
+            };
+            return icons[sport] || '🏟️';
+        }
+
+        function getSportName(sport) {
+            const names = {
+                football: 'Футбол',
+                basketball: 'Баскетбол',
+                tennis: 'Теннис',
+                volleyball: 'Волейбол',
+                swimming: 'Плавание'
+            };
+            return names[sport] || sport;
+        }
+
+        document.querySelectorAll('.sport-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.sport-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                renderVenues(chip.dataset.sport);
+            });
+        });
+
+        function toggleFavorite(e, id) {
+            e.stopPropagation();
+            if (favorites.has(id)) {
+                favorites.delete(id);
+                showToast('Удалено из избранного');
+            } else {
+                favorites.add(id);
+                showToast('Добавлено в избранное');
+            }
+            renderVenues(document.querySelector('.sport-chip.active').dataset.sport);
+            renderFavorites();
+        }
+
+        function renderFavorites() {
+            const list = document.getElementById('favorites-list');
+            const favVenues = venues.filter(v => favorites.has(v.id));
+
+            if (favVenues.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i data-lucide="heart" style="width: 48px; height: 48px;"></i>
+                        <p>У вас пока нет избранных площадок</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = favVenues.map(venue => `
+                    <div class="venue-card" onclick="openBooking(${venue.id})">
+                        <div class="venue-image">
+                            ${getSportIcon(venue.sport)}
+                            <button class="venue-favorite active" onclick="toggleFavorite(event, ${venue.id})">
+                                <i data-lucide="heart" style="width: 18px; height: 18px; fill: currentColor;"></i>
+                            </button>
+                        </div>
+                        <div class="venue-info">
+                            <h3 class="venue-name">${venue.name}</h3>
+                            <div class="venue-location">
+                                <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
+                                ${venue.location}
+                            </div>
+                            <div class="venue-footer">
+                                <div class="venue-price">₽${venue.price.toLocaleString()}<span>/час</span></div>
+                                <button class="book-btn">Забронировать</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function generateCalendar() {
+            const calendar = document.getElementById('calendar');
+            const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            const today = new Date();
+
+            let html = '';
+            for (let i = 0; i < 14; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                const dayName = days[date.getDay() === 0 ? 6 : date.getDay() - 1];
+                const dayNum = date.getDate();
+                const isToday = i === 0;
+                const dateStr = date.toISOString().split('T')[0];
+
+                html += `
+                    <div class="calendar-day ${isToday ? 'selected' : ''}" onclick="selectDate(this, '${dateStr}')" data-date="${dateStr}">
+                        <span class="day-name">${isToday ? 'Сегодня' : dayName}</span>
+                        <span class="day-number">${dayNum}</span>
+                    </div>
+                `;
+            }
+            calendar.innerHTML = html;
+        }
+
+        async function selectDate(el, dateStr) {
+            document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedDate = dateStr;
+            
+            await loadTimeSlots();
+            updatePayButton();
+        }
+
+        async function loadTimeSlots() {
+            if (!currentVenue || !selectedDate) return;
+
+            const container = document.getElementById('time-slots');
+            container.innerHTML = '<div class="loading" style="text-align:center;padding:20px;">Загрузка...</div>';
+
+            try {
+                const response = await fetch(`/api/venues/${currentVenue.id}/slots?date=${selectedDate}`);
+                const slots = await response.json();
+
+                container.innerHTML = slots.map(slot => `
+                    <div class="time-slot ${slot.available ? '' : 'booked'}" 
+                         onclick="${slot.available ? `selectTime(this, '${slot.time}')` : ''}">
+                        ${slot.time}
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<div style="text-align:center;color:var(--text-muted);">Ошибка загрузки</div>';
+            }
+        }
+
+        function selectTime(el, time) {
+            if (el.classList.contains('booked')) return;
+            document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedTime = time;
+            updatePayButton();
+        }
+
+        function openBooking(venueId) {
+            currentVenue = venues.find(v => v.id === venueId);
+            if (!currentVenue) return;
+
+            selectedDate = null;
+            selectedTime = null;
+            document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+            document.getElementById('time-slots').innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">Сначала выберите дату</div>';
+
+            document.getElementById('modal-venue-name').textContent = currentVenue.name;
+            document.getElementById('price-hour').textContent = `₽${currentVenue.price.toLocaleString()}/час`;
+            updateTotal();
+            updatePayButton();
+
+            document.getElementById('booking-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('booking-modal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function updateTotal() {
+            if (!currentVenue) return;
+            const total = currentVenue.price + 150;
+            document.getElementById('total-price').textContent = `₽${total.toLocaleString()}`;
+        }
+
+        function updatePayButton() {
+            const btn = document.getElementById('pay-btn');
+            if (!selectedDate || !selectedTime) {
+                btn.disabled = true;
+                btn.innerHTML = !selectedDate ? 'Выберите дату' : 'Выберите время';
+            } else {
+                btn.disabled = false;
+                const total = currentVenue.price + 150;
+                btn.innerHTML = `Оплатить ₽${total.toLocaleString()}`;
+            }
+        }
+
+        async function processPayment() {
+            if (!selectedDate || !selectedTime) {
+                showToast('Выберите дату и время');
+                return;
+            }
+
+            const phone = prompt('Введите телефон для бронирования:');
+            if (!phone) {
+                showToast('Введите телефон', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('pay-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading">Обработка...</span>';
+
+            try {
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        venueId: currentVenue.id,
+                        date: selectedDate,
+                        time: selectedTime,
+                        phone: phone,
+                        userName: currentUser ? currentUser.name : 'Гость'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Ошибка бронирования');
+                }
+
+                closeModal();
+                showToast('Бронирование подтверждено!');
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+                btn.disabled = false;
+                updatePayButton();
+            }
+        }
+
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            const pageMap = {
+                'home': { page: 'home-page', nav: 0 },
+                'favorites': { page: 'favorites-page', nav: 1, action: renderFavorites },
+                'chat': { page: 'chat-page', nav: 2, action: loadFriendsData },
+                'profile': { page: 'profile-page', nav: 3 }
+            };
+
+            const config = pageMap[page];
+            if (config) {
+                document.getElementById(config.page).classList.add('active');
+                document.querySelectorAll('.nav-item')[config.nav].classList.add('active');
+                if (config.action) config.action();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = toast.querySelector('i');
+            
+            document.getElementById('toast-message').textContent = message;
+            
+            toast.className = 'toast';
+            if (type === 'error') {
+                toast.classList.add('error');
+                icon.setAttribute('data-lucide', 'alert-circle');
+            } else if (type === 'success') {
+                toast.classList.add('success');
+                icon.setAttribute('data-lucide', 'check-circle');
+            }
+            
+            lucide.createIcons();
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function showCart() {
+            showToast('Корзина в разработке');
+        }
+
+        function showNotifications() {
+            showToast('2 новых уведомления');
+        }
+
+        document.getElementById('booking-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.venue-card');
+            cards.forEach(card => {
+                const name = card.querySelector('.venue-name').textContent.toLowerCase();
+                card.style.display = name.includes(term) ? 'block' : 'none';
+            });
+        });
+
+        // ===== АВТОРИЗАЦИЯ =====
+
+        function showLoginForm() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('register-form').style.display = 'none';
+        }
+
+        function showRegisterForm() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+        }
+
+        function showAuthSection() {
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('user-section').style.display = 'none';
+        }
+
+        async function register() {
+            const name = document.getElementById('reg-name').value;
+            const phone = document.getElementById('reg-phone').value;
+            const password = document.getElementById('reg-password').value;
+            
+            if (!name || !phone || !password) {
+                showToast('Заполните все поля', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, password })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                currentUser = result.user;
+                showUserSection();
+                showToast('Регистрация успешна!');
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function login() {
+            const phone = document.getElementById('login-phone').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!phone || !password) {
+                showToast('Заполните все поля', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                currentUser = result.user;
+                showUserSection();
+                showToast('Вход выполнен!');
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        function showUserSection() {
+            if (!currentUser) {
+                showAuthSection();
+                return;
+            }
+            
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('user-section').style.display = 'block';
+            
+            document.getElementById('user-name').textContent = currentUser.name;
+            document.getElementById('user-phone').textContent = currentUser.phone;
+            document.getElementById('user-avatar').textContent = currentUser.name[0].toUpperCase();
+        }
+
+        function logout() {
+            currentUser = null;
+            showAuthSection();
+            showToast('Вы вышли из аккаунта');
+        }
+
+        // ===== ДРУЗЬЯ И ЧАТ =====
+
+        function showChatTab(tab) {
+            // Скрываем все контейнеры
+            document.getElementById('friends-list-container').style.display = 'none';
+            document.getElementById('search-users-container').style.display = 'none';
+            document.getElementById('friend-requests-container').style.display = 'none';
+            
+            // Убираем активность с табов
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            
+            // Показываем нужный контейнер и активируем таб
+            if (tab === 'friends') {
+                document.getElementById('friends-list-container').style.display = 'block';
+                document.getElementById('tab-friends').classList.add('active');
+                loadFriends();
+            } else if (tab === 'search') {
+                document.getElementById('search-users-container').style.display = 'block';
+                document.getElementById('tab-search').classList.add('active');
+            } else if (tab === 'requests') {
+                document.getElementById('friend-requests-container').style.display = 'block';
+                document.getElementById('tab-requests').classList.add('active');
+                loadFriendRequests();
+            }
+        }
+
+        function loadFriendsData() {
+            if (!currentUser) {
+                document.getElementById('friends-list').innerHTML = 
+                    '<div style="text-align:center;padding:40px;color:var(--text-muted)">Войдите чтобы видеть друзей</div>';
+                document.getElementById('friend-requests-list').innerHTML = 
+                    '<div style="text-align:center;padding:40px;color:var(--text-muted)">Войдите чтобы видеть заявки</div>';
+                return;
+            }
+            loadFriends();
+            loadFriendRequests();
+        }
+
+        async function loadFriends() {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch(`/api/friends?userId=${currentUser.id}`);
+                const friends = await response.json();
+                
+                const list = document.getElementById('friends-list');
+                if (friends.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">У вас пока нет друзей. Найдите игроков во вкладке "Найти игрока"</div>';
+                    return;
+                }
+                
+                list.innerHTML = friends.map(friend => `
+                    <div class="friend-card" onclick="openDialog('${friend.id}', '${friend.name}')">
+                        <div class="friend-avatar">${friend.name[0].toUpperCase()}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${friend.name}</div>
+                            <div class="friend-status">Нажмите чтобы написать</div>
+                        </div>
+                        <i data-lucide="message-circle" style="width: 24px; height: 24px; color: var(--primary);"></i>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Ошибка загрузки друзей:', error);
+            }
+        }
+
+        async function loadFriendRequests() {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch(`/api/friends/requests?userId=${currentUser.id}`);
+                const requests = await response.json();
+                
+                const list = document.getElementById('friend-requests-list');
+                
+                // Обновляем счетчик
+                const countBadge = document.getElementById('requests-count');
+                const notificationBadge = document.getElementById('notification-badge');
+                
+                if (requests.length > 0) {
+                    countBadge.textContent = requests.length;
+                    countBadge.style.display = 'inline';
+                    notificationBadge.textContent = requests.length;
+                    notificationBadge.style.display = 'flex';
+                } else {
+                    countBadge.style.display = 'none';
+                    notificationBadge.style.display = 'none';
+                }
+                
+                if (requests.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Нет новых заявок</div>';
+                    return;
+                }
+                
+                list.innerHTML = requests.map(req => `
+                    <div class="request-card">
+                        <div class="friend-avatar">${req.user.name[0].toUpperCase()}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${req.user.name}</div>
+                            <div class="friend-status">Хочет добавить вас в друзья</div>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn-accept" onclick="acceptRequest('${req.id}')">Принять</button>
+                            <button class="btn-reject" onclick="rejectRequest('${req.id}')">Отклонить</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Ошибка загрузки заявок:', error);
+            }
+        }
+
+        async function searchUsers() {
+            const query = document.getElementById('search-user-input').value.trim();
+            if (!query) {
+                document.getElementById('search-results').innerHTML = 
+                    '<div style="text-align:center;padding:40px;color:var(--text-muted)">Введите имя или телефон для поиска</div>';
+                return;
+            }
+            
+            if (!currentUser) {
+                document.getElementById('search-results').innerHTML = 
+                    '<div style="text-align:center;padding:40px;color:var(--text-muted)">Войдите чтобы искать игроков</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(query)}&except=${currentUser.id}`);
+                const users = await response.json();
+                
+                const list = document.getElementById('search-results');
+                if (users.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Игроки не найдены</div>';
+                    return;
+                }
+                
+                list.innerHTML = users.map(user => `
+                    <div class="search-user-card">
+                        <div class="friend-avatar">${user.name[0].toUpperCase()}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${user.name}</div>
+                            <div class="friend-status">${user.phone}</div>
+                        </div>
+                        <button class="btn-add-friend" onclick="sendFriendRequest('${user.id}')">Добавить</button>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Ошибка поиска:', error);
+            }
+        }
+
+        async function sendFriendRequest(friendId) {
+            if (!currentUser) return;
+                    
+            try {
+                const response = await fetch('/api/friends/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, friendId: friendId })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                showToast('Заявка отправлена!');
+                
+                // Обновляем список поиска, чтобы кнопка изменилась
+                searchUsers();
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function acceptRequest(requestId) {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch('/api/friends/accept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId: requestId, userId: currentUser.id })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                showToast('Заявка принята!');
+                loadFriendRequests();
+                loadFriends();
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function rejectRequest(requestId) {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch('/api/friends/reject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId: requestId, userId: currentUser.id })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                showToast('Заявка отклонена');
+                loadFriendRequests();
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // ===== ДИАЛОГ =====
+
+        function openDialog(userId, userName) {
+            currentDialogUser = { id: userId, name: userName };
+            
+            document.getElementById('dialog-name').textContent = userName;
+            document.getElementById('chat-messages').innerHTML = '<div class="loading" style="text-align:center;padding:20px;">Загрузка...</div>';
+            
+            // Переключаемся на страницу диалога
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('dialog-page').classList.add('active');
+            
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            if (!currentUser || !currentDialogUser) return;
+            
+            try {
+                const response = await fetch(`/api/messages?userId=${currentUser.id}&otherId=${currentDialogUser.id}`);
+                const messages = await response.json();
+                
+                const container = document.getElementById('chat-messages');
+                
+                if (messages.length === 0) {
+                    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Нет сообщений. Напишите первым!</div>';
+                    return;
+                }
+                
+                container.innerHTML = messages.map(msg => {
+                    const isSent = msg.fromId === currentUser.id;
+                    const time = new Date(msg.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    
+                    return `
+                        <div class="message ${isSent ? 'sent' : 'received'}">
+                            <div>${escapeHtml(msg.text)}</div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Прокручиваем вниз
+                container.scrollTop = container.scrollHeight;
+                
+            } catch (error) {
+                console.error('Ошибка загрузки сообщений:', error);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            
+            if (!text || !currentUser || !currentDialogUser) return;
+            
+            input.value = '';
+            
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fromId: currentUser.id,
+                        toId: currentDialogUser.id,
+                        text: text
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error);
+                }
+                
+                // Перезагружаем сообщения
+                loadMessages();
+                
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
