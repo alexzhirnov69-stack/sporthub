@@ -481,6 +481,89 @@ app.get('/api/messages', async (req, res) => {
     }
 });
 
+// ===== API АДМИНКИ =====
+
+// Получить все площадки (для админки)
+app.get('/api/admin/venues', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM venues ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Ошибка:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Создать новую площадку
+app.post('/api/admin/venues', async (req, res) => {
+    const { name, location, sport, price, coords_lat, coords_lng, image } = req.body;
+    
+    if (!name || !location || !sport) {
+        return res.status(400).json({ error: 'Заполните обязательные поля' });
+    }
+    
+    try {
+        const result = await pool.query(
+            `INSERT INTO venues (name, location, sport, price, coords_lat, coords_lng, image)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [name, location, sport, price || 0, coords_lat, coords_lng, image]
+        );
+        res.json({ success: true, venue: result.rows[0] });
+    } catch (error) {
+        console.error('Ошибка:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Обновить площадку
+app.put('/api/admin/venues/:id', async (req, res) => {
+    const venueId = parseInt(req.params.id);
+    const { name, location, sport, price, coords_lat, coords_lng, image } = req.body;
+    
+    try {
+        const result = await pool.query(
+            `UPDATE venues 
+             SET name = $1, location = $2, sport = $3, price = $4, 
+                 coords_lat = $5, coords_lng = $6, image = $7
+             WHERE id = $8
+             RETURNING *`,
+            [name, location, sport, price, coords_lat, coords_lng, image, venueId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Площадка не найдена' });
+        }
+        
+        res.json({ success: true, venue: result.rows[0] });
+    } catch (error) {
+        console.error('Ошибка:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Удалить площадку
+app.delete('/api/admin/venues/:id', async (req, res) => {
+    const venueId = parseInt(req.params.id);
+    
+    try {
+        // Сначала удаляем связанные бронирования
+        await pool.query('DELETE FROM bookings WHERE venue_id = $1', [venueId]);
+        
+        // Теперь удаляем площадку
+        const result = await pool.query('DELETE FROM venues WHERE id = $1 RETURNING *', [venueId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Площадка не найдена' });
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
 // ===== СТАТИКА =====
 
 // Определяем путь к статическим файлам
