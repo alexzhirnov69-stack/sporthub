@@ -5,13 +5,12 @@ const { Pool } = require('pg');
 const app = express();
 app.use(express.json());
 
-// Подключение к PostgreSQL
+// ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
+// Для Railway: используем DATABASE_URL
+// Для локальной разработки: используем локальные настройки
 const pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    database: 'sporthub',
-    user: 'postgres',
-    password: 'alex69'
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:alex69@localhost:5432/sporthub',
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 // Проверка подключения
@@ -21,15 +20,104 @@ pool.connect((err, client, release) => {
     } else {
         console.log('✅ PostgreSQL подключен успешно!');
         release();
+        // Инициализируем таблицы при старте
+        initDatabase();
     }
 });
+
+// ===== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ =====
+async function initDatabase() {
+    try {
+        // Таблица площадок
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS venues (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                location VARCHAR(255),
+                sport VARCHAR(50),
+                price INTEGER DEFAULT 0,
+                coords_lat DECIMAL(10, 8),
+                coords_lng DECIMAL(11, 8),
+                image VARCHAR(500),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица пользователей
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                phone VARCHAR(20) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица бронирований
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                venue_id INTEGER REFERENCES venues(id),
+                date DATE NOT NULL,
+                time VARCHAR(10) NOT NULL,
+                phone VARCHAR(20) NOT NULL,
+                user_name VARCHAR(100),
+                price INTEGER DEFAULT 0,
+                total INTEGER DEFAULT 0,
+                status VARCHAR(20) DEFAULT 'confirmed',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица дружбы
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS friendships (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                friend_id INTEGER REFERENCES users(id),
+                status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, friend_id)
+            )
+        `);
+
+        // Таблица сообщений
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                from_id INTEGER REFERENCES users(id),
+                to_id INTEGER REFERENCES users(id),
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Добавляем тестовые площадки, если их нет
+        const venuesCount = await pool.query('SELECT COUNT(*) FROM venues');
+        if (venuesCount.rows[0].count === '0') {
+            await pool.query(`
+                INSERT INTO venues (name, location, sport, price, coords_lat, coords_lng) VALUES
+                ('Футбольное поле "Центральное"', 'Москва, ул. Спортивная 1', 'football', 2500, 55.7558, 37.6173),
+                ('Баскетбольный зал "Олимп"', 'Москва, ул. Олимпийская 5', 'basketball', 1800, 55.7600, 37.6200),
+                ('Теннисный корт "Премиум"', 'Москва, ул. Теннисная 12', 'tennis', 3200, 55.7500, 37.6100),
+                ('Волейбольная площадка "Пляж"', 'Москва, ул. Пляжная 3', 'volleyball', 1500, 55.7650, 37.6300),
+                ('Бассейн "Волна"', 'Москва, ул. Бассейная 8', 'swimming', 1200, 55.7450, 37.6000)
+            `);
+            console.log('✅ Тестовые площадки добавлены');
+        }
+
+        console.log('✅ База данных инициализирована');
+    } catch (error) {
+        console.error('❌ Ошибка инициализации базы:', error);
+    }
+}
 
 // ===== API ПЛОЩАДКИ =====
 
 app.get('/api/venues', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM venues');
-        // Преобразуем формат coords для совместимости с фронтендом
         const venues = result.rows.map(v => ({
             ...v,
             coords: [parseFloat(v.coords_lat), parseFloat(v.coords_lng)]
@@ -46,7 +134,6 @@ app.get('/api/venues/:id/slots', async (req, res) => {
     const date = req.query.date;
     
     try {
-        // Получаем забронированные слоты
         const result = await pool.query(
             'SELECT time FROM bookings WHERE venue_id = $1 AND date = $2 AND status != $3',
             [venueId, date, 'cancelled']
@@ -54,7 +141,6 @@ app.get('/api/venues/:id/slots', async (req, res) => {
         
         const bookedTimes = result.rows.map(r => r.time);
         
-        // Генерируем все слоты с 8:00 до 22:00
         const slots = [];
         for (let hour = 8; hour <= 22; hour++) {
             const time = hour.toString().padStart(2, '0') + ':00';
@@ -81,7 +167,6 @@ app.post('/api/bookings', async (req, res) => {
     }
     
     try {
-        // Проверяем, не занят ли слот
         const existing = await pool.query(
             'SELECT id FROM bookings WHERE venue_id = $1 AND date = $2 AND time = $3 AND status != $4',
             [venueId, date, time, 'cancelled']
@@ -91,7 +176,6 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(409).json({ error: 'Этот слот уже забронирован' });
         }
         
-        // Получаем цену площадки
         const venueResult = await pool.query('SELECT name, price FROM venues WHERE id = $1', [venueId]);
         if (venueResult.rows.length === 0) {
             return res.status(404).json({ error: 'Площадка не найдена' });
@@ -100,7 +184,6 @@ app.post('/api/bookings', async (req, res) => {
         const venue = venueResult.rows[0];
         const total = venue.price + 150;
         
-        // Создаем бронирование
         const result = await pool.query(
             `INSERT INTO bookings (venue_id, date, time, phone, user_name, price, total, status)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'confirmed')
@@ -150,13 +233,11 @@ app.post('/api/register', async (req, res) => {
     }
     
     try {
-        // Проверяем существование
         const existing = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
         if (existing.rows.length > 0) {
             return res.status(409).json({ error: 'Пользователь с таким телефоном уже существует' });
         }
         
-        // Создаем пользователя (в реальном приложении пароль нужно хешировать!)
         const result = await pool.query(
             'INSERT INTO users (name, phone, password) VALUES ($1, $2, $3) RETURNING id, name, phone',
             [name, phone, password]
@@ -219,7 +300,6 @@ app.post('/api/friends/request', async (req, res) => {
     }
     
     try {
-        // Проверяем существующую заявку или дружбу
         const existing = await pool.query(
             `SELECT id, status FROM friendships 
              WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
@@ -353,7 +433,6 @@ app.post('/api/messages', async (req, res) => {
     }
     
     try {
-        // Проверяем дружбу
         const areFriends = await pool.query(
             `SELECT id FROM friendships 
              WHERE status = 'accepted' AND 
@@ -388,7 +467,6 @@ app.get('/api/messages', async (req, res) => {
             [userId, otherId]
         );
         
-        // Преобразуем формат для совместимости с фронтендом
         const messages = result.rows.map(m => ({
             ...m,
             fromId: m.from_id,
@@ -405,15 +483,20 @@ app.get('/api/messages', async (req, res) => {
 
 // ===== СТАТИКА =====
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Определяем путь к статическим файлам
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
 
+// Для всех остальных запросов отдаем index.html (SPA)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-const PORT = 3000;
-app.listen(PORT, '0.0.0.0', () => {
+// ===== ЗАПУСК =====
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
     console.log('=================================');
-    console.log(`🚀 Server: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📱 URL: http://localhost:${PORT}`);
     console.log('=================================');
 });
