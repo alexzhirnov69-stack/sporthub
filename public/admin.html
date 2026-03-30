@@ -250,9 +250,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Фото площадки</label>
-                    <input type="file" id="imageFile" accept="image/*" required>
-                    <div class="coords-hint">Максимум 5MB, форматы: JPG, PNG</div>
+                    <label>Фото площадки <span id="photoHint" style="font-weight: normal; color: #6b7280;"></span></label>
+                    <input type="file" id="imageFile" accept="image/*">
+                    <div class="coords-hint">Максимум 5MB, форматы: JPG, PNG.<span id="photoHint2"></span></div>
                 </div>
                 
                 <div class="form-actions">
@@ -322,26 +322,36 @@
             return names[sport] || sport;
         }
         
-        // Открыть модалку
-        function openModal(venue = null) {
-            document.getElementById('modal').classList.add('active');
-            document.getElementById('modalTitle').textContent = 
-                venue ? 'Редактировать площадку' : 'Добавить площадку';
-            
-            if (venue) {
-                document.getElementById('venueId').value = venue.id;
-                document.getElementById('name').value = venue.name;
-                document.getElementById('sport').value = venue.sport;
-                document.getElementById('location').value = venue.location;
-                document.getElementById('price').value = venue.price;
-                document.getElementById('coords_lat').value = venue.coords_lat || '';
-                document.getElementById('coords_lng').value = venue.coords_lng || '';
-                document.getElementById('image').value = venue.image || '';
-            } else {
-                document.getElementById('venueForm').reset();
-                document.getElementById('venueId').value = '';
-            }
-        }
+     // Открыть модалку
+function openModal(venue = null) {
+    document.getElementById('modal').classList.add('active');
+    document.getElementById('modalTitle').textContent = 
+        venue ? 'Редактировать площадку' : 'Добавить площадку';
+    
+    // Сброс файла всегда
+    document.getElementById('imageFile').value = '';
+    
+    if (venue) {
+        document.getElementById('venueId').value = venue.id;
+        document.getElementById('name').value = venue.name;
+        document.getElementById('sport').value = venue.sport;
+        document.getElementById('location').value = venue.location;
+        document.getElementById('price').value = venue.price;
+        document.getElementById('coords_lat').value = venue.coords_lat || '';
+        document.getElementById('coords_lng').value = venue.coords_lng || '';
+        
+        // Подсказка при редактировании — фото необязательно
+        document.getElementById('photoHint').textContent = '(оставьте пустым, чтобы сохранить текущее)';
+        document.getElementById('photoHint2').textContent = 'При редактировании фото необязательно';
+    } else {
+        document.getElementById('venueForm').reset();
+        document.getElementById('venueId').value = '';
+        
+        // Подсказка при создании — фото обязательно
+        document.getElementById('photoHint').textContent = '*';
+        document.getElementById('photoHint2').textContent = '';
+    }
+}
         
         // Закрыть модалку
         function closeModal() {
@@ -375,42 +385,54 @@
         }
         
         // Сохранение формы
-        document.getElementById('venueForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const venueId = document.getElementById('venueId').value;
-            const data = {
-                name: document.getElementById('name').value,
-                sport: document.getElementById('sport').value,
-                location: document.getElementById('location').value,
-                price: parseInt(document.getElementById('price').value) || 0,
-                coords_lat: document.getElementById('coords_lat').value || null,
-                coords_lng: document.getElementById('coords_lng').value || null,
-                image: document.getElementById('image').value || null
-            };
-            
-            try {
-                const url = venueId ? `/api/admin/venues/${venueId}` : '/api/admin/venues';
-                const method = venueId ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                if (response.ok) {
-                    closeModal();
-                    loadVenues();
-                } else {
-                    const error = await response.json();
-                    alert(error.error || 'Ошибка сохранения');
-                }
-            } catch (error) {
-                console.error('Ошибка:', error);
-                alert('Ошибка сохранения');
-            }
+     document.getElementById('venueForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const venueId = document.getElementById('venueId').value;
+    const fileInput = document.getElementById('imageFile');
+    
+    // Проверяем файл
+    if (!venueId && !fileInput.files[0]) {
+        alert('Выберите фото площадки');
+        return;
+    }
+    
+    const formData = new FormData();
+    
+    // Текстовые поля
+    formData.append('name', document.getElementById('name').value);
+    formData.append('sport', document.getElementById('sport').value);
+    formData.append('location', document.getElementById('location').value);
+    formData.append('price', document.getElementById('price').value || 0);
+    formData.append('coords_lat', document.getElementById('coords_lat').value || '');
+    formData.append('coords_lng', document.getElementById('coords_lng').value || '');
+    
+    // Файл (если выбран — при редактировании можно не менять)
+    if (fileInput.files[0]) {
+        formData.append('image', fileInput.files[0]);
+    }
+    
+    try {
+        const url = venueId ? `/api/admin/venues/${venueId}` : '/api/admin/venues';
+        const method = venueId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            body: formData
         });
+        
+        if (response.ok) {
+            closeModal();
+            loadVenues();
+        } else {
+            const error = await response.json();
+            alert(error.error || 'Ошибка сохранения');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка сохранения');
+    }
+});
         
         // Закрытие по клику вне модалки
         document.getElementById('modal').addEventListener('click', (e) => {
